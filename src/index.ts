@@ -1,30 +1,26 @@
-import Discord, { Message } from 'discord.js';
+import Discord from 'discord.js';
 import { readJson } from './utils';
 import fs from 'fs';
 import path from 'path';
-import { Announcement } from './announcement';
+import { AnnouncementCollection } from './announcementCollection';
 
-const executeCommand = '!announcer';
-
-type Execute = (message: Message, args: string[]) => void;
-
+type Execute = (msg: Discord.Message, args: string[]) => Promise<any>;
 export interface CommandFile {
   name: string;
+  example: string;
   description: string;
   execute: Execute;
 }
+
+const executeCommand = '!announcer';
 
 const client = Object.assign(new Discord.Client(), {
   commands: new Discord.Collection<string, CommandFile>(),
 });
 
+export const announcementCollection = new AnnouncementCollection(client);
+
 client.on('ready', () => {
-  // const announcement = new Announcement(
-  //   client,
-  //   'Hello World',
-  //   '392437423662956557',
-  //   '* * * * *',
-  // );
   if (client.user) {
     console.log(`Logged in as ${client.user.tag}!`);
   } else {
@@ -51,9 +47,17 @@ const loadCommands = async () => {
 };
 
 const init = async () => {
-  await loadCommands();
-  const data = await readJson<{ token: string }>('./init.json');
-  await client.login(data.token);
+  try {
+    await loadCommands();
+    console.log('Finished loading commands');
+    await announcementCollection.load();
+    console.log('Finished loading announcements');
+    const data = await readJson<{ token: string }>('./init.json');
+    await client.login(data.token);
+  } catch (e) {
+    console.error(e);
+    process.exit(1);
+  }
 };
 
 init();
